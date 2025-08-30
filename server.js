@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
-
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -12,38 +12,35 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// ----------------- Rate Limiting -----------------
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests
+  message: "Too many requests from this IP, please try again later."
+});
+app.use(limiter); // apply globally
+
 // ----------------- Routes -----------------
 import todoRoutes from './routes/todoRoutes.js';
-app.use('/api/todos', todoRoutes);
-
 import authRoutes from './routes/authRoutes.js';
-app.use('/api/auth', authRoutes);
-
 import { authMiddleware } from './controllers/authController.js';
+
+app.use('/api/todos', todoRoutes);
+app.use('/api/auth', authRoutes);
 
 /**
  * @swagger
  * /api/protected:
- * get:
- * summary: Access protected route
- * tags: [Auth]
- * security:
- * - bearerAuth: []
- * responses:
- * 200:
- * description: Authorized
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * message:
- * type: string
- * example: You are authorized
- * userId:
- * type: integer
- * 401:
- * description: Unauthorized, invalid or missing token
+ *   get:
+ *     summary: Access protected route
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Authorized
+ *       401:
+ *         description: Unauthorized, invalid or missing token
  */
 app.get('/api/protected', authMiddleware, (req, res) => {
   res.json({ message: 'You are authorized', userId: req.user.id });
@@ -61,11 +58,7 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'API documentation for Task Manager app',
     },
-    servers: [
-      {
-        url: `http://localhost:${port}`,
-      },
-    ],
+    servers: [{ url: `http://localhost:${port}` }],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -76,8 +69,7 @@ const swaggerOptions = {
       },
     },
   },
-  // Note the .js extension in the apis array
-  apis: ['./routes/*.js'],
+  apis: ['./routes/*.js'], // your routes with swagger comments
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);

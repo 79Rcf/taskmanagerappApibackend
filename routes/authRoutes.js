@@ -1,11 +1,14 @@
-import express from 'express';
+// authRoutes.js
+import express from "express";
 const router = express.Router();
-import { register, login } from '../controllers/authController.js'; // Note the .js file extension
 
-// Register route
-router.post('/register', register);
+import { register, login } from "../controllers/authController.js"; 
+import { registerSchema, loginSchema, validate } from "../validators/authValidator.js"; 
 
-// Login route
-router.post('/login', login);
+// Register route with validation
+router.post("/register", validate(registerSchema), register);
+
+// Login route with validation
+router.post("/login", validate(loginSchema), login);
 
 export default router;
